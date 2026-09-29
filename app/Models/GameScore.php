@@ -14,6 +14,7 @@ class GameScore extends Model
     {
         return [
             'difficulty' => GameDifficulty::class,
+             'metadata' => 'array'
         ];
     }
 }

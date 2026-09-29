@@ -19,6 +19,7 @@ class GameSeeder extends Seeder
                 'slug' => 'sudoku',
                 'description' => 'Train your brain with a Sudoku game',
                 'category' => 'logical',
+                'status' => 'published',
                 'sort_order' => 1
             ],
             [
@@ -26,6 +27,7 @@ class GameSeeder extends Seeder
                 'slug' => 'tetris',
                 'description' => 'Train your brain with a Tetris game',
                 'category' => 'logical',
+                'status' => 'published',
                 'sort_order' => 2
             ]
         ];
