@@ -8,6 +8,6 @@
   </head>
   <body>
     <canvas id="gameCanvas"></canvas>
-    @vite(['resources/games/sudoku/game.ts'])
+    @vite(['resources/gamesTS/sudoku/game.ts'])
   </body>
 </html>
