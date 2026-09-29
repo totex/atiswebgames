@@ -46,42 +46,21 @@
         </header>
         <div class="w-full px-4">
             <main class="mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <a
-                    href="{{ route('sudoku') }}"
+                @foreach ($games as $game)
+
+                <a href="{{ route('games.show', ['game' => $game->slug]) }}"
                     class="group flex min-h-56 flex-col rounded-lg border border-[#3b4840] bg-[#242d27] p-6 text-[#f1f5f2] shadow-md transition duration-200 hover:-translate-y-1 hover:border-[#74d99e] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#74d99e] focus-visible:ring-offset-2 focus-visible:ring-offset-[#171c19]"
                 >
-                    <span class="mb-8 text-xs font-semibold uppercase tracking-[0.12em] text-[#aab7af]">Logic puzzle</span>
-                    <h1 class="mb-2 text-xl font-semibold">Sudoku Solver</h1>
-                    <p class="text-sm leading-6 text-[#aab7af]">Train your brain with a Sudoku game.</p>
+                    <span class="mb-8 text-xs font-semibold uppercase tracking-[0.12em] text-[#aab7af]">{{ $game->category }}</span>
+                    <h1 class="mb-2 text-xl font-semibold">{{ $game->title }}</h1>
+                    <p class="text-sm leading-6 text-[#aab7af]">{{ $game->description }}</p>
                     <span class="mt-auto flex items-center justify-between pt-8 text-sm font-medium">
-                        <span>Play Sudoku</span>
+                        <span>Play {{ $game->title }}</span>
                         <span aria-hidden="true" class="text-[#74d99e] transition-transform group-hover:translate-x-1">&rarr;</span>
                     </span>
+
                 </a>
-                <a
-                    href="{{ route('tetris') }}"
-                    class="group flex min-h-56 flex-col rounded-lg border border-[#3b4840] bg-[#242d27] p-6 text-[#f1f5f2] shadow-md transition duration-200 hover:-translate-y-1 hover:border-[#74d99e] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#74d99e] focus-visible:ring-offset-2 focus-visible:ring-offset-[#171c19]"
-                >
-                    <span class="mb-8 text-xs font-semibold uppercase tracking-[0.12em] text-[#aab7af]">Logic puzzle</span>
-                    <h1 class="mb-2 text-xl font-semibold">Tetris</h1>
-                    <p class="text-sm leading-6 text-[#aab7af]">Train your brain with a Tetris game.</p>
-                    <span class="mt-auto flex items-center justify-between pt-8 text-sm font-medium">
-                        <span>Play Tetris</span>
-                        <span aria-hidden="true" class="text-[#74d99e] transition-transform group-hover:translate-x-1">&rarr;</span>
-                    </span>
-                </a>
-                <a
-                    href="{{ route('minesweeper') }}"
-                    class="group flex min-h-56 flex-col rounded-lg border border-[#3b4840] bg-[#242d27] p-6 text-[#f1f5f2] shadow-md transition duration-200 hover:-translate-y-1 hover:border-[#74d99e] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#74d99e] focus-visible:ring-offset-2 focus-visible:ring-offset-[#171c19]"
-                >
-                    <span class="mb-8 text-xs font-semibold uppercase tracking-[0.12em] text-[#aab7af]">Logic puzzle</span>
-                    <h1 class="mb-2 text-xl font-semibold">Minesweeper</h1>
-                    <p class="text-sm leading-6 text-[#aab7af]">Train your brain with a Minesweeper game.</p>
-                    <span class="mt-auto flex items-center justify-between pt-8 text-sm font-medium">
-                        <span>Play Minesweeper</span>
-                        <span aria-hidden="true" class="text-[#74d99e] transition-transform group-hover:translate-x-1">&rarr;</span>
-                    </span>
-                </a>
+                @endforeach
             </main>
         </div>
 
