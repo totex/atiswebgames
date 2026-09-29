@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('category')->nullable();
             $table->string('status')->default('draft');
             $table->string('version')->default('0.0.1');
-            $table->int('sort_order');
+            $table->integer('sort_order');
 
             $table->timestamps();
         });
