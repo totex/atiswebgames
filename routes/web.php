@@ -9,7 +9,7 @@ use App\Http\Controllers\GameController;
 // Route::view('/minesweeper', 'games.single.minesweeper')->name('minesweeper');
 
 Route::get('/', [GameController::class, 'index'])
-    ->name('games.index');
+    ->name('welcome');
 
 Route::get('/games/{game:slug}', [GameController::class, 'show'])
     ->name('games.show');

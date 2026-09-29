@@ -8,6 +8,6 @@
   </head>
   <body>
     <canvas id="gameCanvas"></canvas>
-    @vite(['resources/gamesTS/' . $game->slug . '/game.ts'])
+    @vite(['resources/games/' . $game->slug . '/game.ts'])
   </body>
 </html>
