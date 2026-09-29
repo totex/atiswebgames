@@ -45,7 +45,7 @@
             @endif
         </header>
         <div class="w-full px-4">
-            <main class="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 sm:grid-cols-2">
+            <main class="mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <a
                     href="{{ route('sudoku') }}"
                     class="group flex min-h-56 flex-col rounded-lg border border-[#3b4840] bg-[#242d27] p-6 text-[#f1f5f2] shadow-md transition duration-200 hover:-translate-y-1 hover:border-[#74d99e] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#74d99e] focus-visible:ring-offset-2 focus-visible:ring-offset-[#171c19]"
