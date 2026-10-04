@@ -1,5 +1,5 @@
 import {GameObjects, Scene} from "phaser";
-import conf from "./config.ts";
+import conf from "./config";
 
 class Cell {
     x: integer;

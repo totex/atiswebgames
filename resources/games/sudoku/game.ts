@@ -2,9 +2,9 @@ import './style.css';
 import {Scene, Game, WEBGL, GameObjects} from 'phaser';
 import { Grid } from './grid';
 import { Lines } from './lines';
-import { GameButtons, Button } from './buttons.ts';
+import { GameButtons, Button } from './buttons'; // Don't need the file extension: buttons.ts
 import Pointer = Phaser.Input.Pointer;
-import conf from "./config.ts";
+import conf from "./config";
 import Key = Phaser.Input.Keyboard.Key;
 import Phaser from 'phaser';
 

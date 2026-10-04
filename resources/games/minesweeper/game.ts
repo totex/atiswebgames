@@ -13,7 +13,7 @@ const config = {
     // width: window.innerWidth,
     // height: window.innerHeight,
     width: 1200,
-    height: 800,
+    height: 900,
     canvas,
     scene: [
         GameScene

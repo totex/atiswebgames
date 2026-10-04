@@ -1,5 +1,5 @@
 import {Scene, GameObjects } from "phaser";
-import conf from "./config.ts";
+import conf from "./config";
 import Phaser from 'phaser';
 
 export class Button{
