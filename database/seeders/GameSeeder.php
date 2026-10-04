@@ -23,9 +23,9 @@ class GameSeeder extends Seeder
                 'sort_order' => 1
             ],
             [
-                'title' => 'Tetris',
-                'slug' => 'tetris',
-                'description' => 'Train your brain with a Tetris game',
+                'title' => 'Minesweeper',
+                'slug' => 'minesweeper',
+                'description' => 'Train your brain with a Minesweeper game',
                 'category' => 'logical',
                 'status' => 'published',
                 'sort_order' => 2

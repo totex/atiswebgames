@@ -1,4 +1,4 @@
-import './style.css'
+import './style.css';
 import {Scene, Game, WEBGL, GameObjects} from 'phaser';
 import { Grid } from './grid';
 import { Lines } from './lines';
