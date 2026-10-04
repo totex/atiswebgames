@@ -1,5 +1,6 @@
 import './style.css';
-import {Scene, Game, WEBGL, GameObjects} from 'phaser';
+import {Scene, Game, WEBGL } from 'phaser';
+import conf from './config';
 
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 
@@ -12,8 +13,8 @@ const config = {
     type: WEBGL,
     // width: window.innerWidth,
     // height: window.innerHeight,
-    width: 1200,
-    height: 900,
+    width: conf.canvas_pixel_width,
+    height: conf.canvas_pixel_height,
     canvas,
     scene: [
         GameScene
