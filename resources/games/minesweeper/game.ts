@@ -1,11 +1,22 @@
 import './style.css';
 import {Scene, Game, WEBGL } from 'phaser';
 import conf from './config';
+import { Lines } from './lines';
 
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 
-class GameScene extends Scene {
+// creates the grid lines
+const lines = new Lines();
 
+
+class GameScene extends Scene {
+    constructor() {
+        super('scene-game');
+    }
+
+    create(){
+        lines.add(this);
+    }
 }
 
 

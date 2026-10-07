@@ -25,7 +25,6 @@ export class Lines {
             } else {
                 scene.add.line(0, 0, 0, y, conf.grid_pixel_width, y, 0xffffff, 0.5).setOrigin(0);
             }
-
         }
     }
 
