@@ -5,6 +5,9 @@ export const conf = {
     grid_pixel_height: 900,
     cell_pixel_width: 30,
     cell_pixel_height: 30,
+    circle_radius: 15,
+    num_hor_cells: 30,
+    num_ver_cells: 30,
     game_title: "Minesweeper",
 }
 
