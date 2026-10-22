@@ -3,7 +3,7 @@ import conf from './config';
 
 
 class Cell {
-    visible: boolean;
+    visible: boolean = false;
     size: integer = 30;
     radius: integer = this.size / 2;
     pos: Phaser.Math.Vector2;
@@ -11,16 +11,15 @@ class Cell {
     marked: boolean = false;
     mine: boolean = false;
 
-    constructor(visible: boolean, pos: Phaser.Math.Vector2) {
-        this.visible = visible;
+    constructor(mine: boolean, pos: Phaser.Math.Vector2) {
+        this.mine = mine;
         this.pos = pos;
     }
 
     add(scene: Scene) {
-        // if (this.visible) {
-
-        // }
-        scene.add.circle(this.pos.x, this.pos.y, this.radius, 0xff0000);
+        if (this.mine) {
+            scene.add.circle(this.pos.x, this.pos.y, this.radius, 0xff0000);
+        }
     }
 
 }
@@ -39,14 +38,23 @@ export class Grid {
             this.cells[x] = [];
             for (let y = 0; y < height; y++) {
                 let radius = conf.circle_radius;
-                this.cells[x][y] = new Cell(false, new Phaser.Math.Vector2(
+                let mine = this.randomMines();
+                this.cells[x][y] = new Cell(mine, new Phaser.Math.Vector2(
                     x * conf.cell_pixel_width + radius, 
                     y * conf.cell_pixel_height + radius
                 ));
             }
         }
-        this.placeMines(Math.floor(width * height * 0.2)); // Example: place mines on 20% of the grid
+        // this.placeMines(Math.floor(width * height * 0.2)); // Example: place mines on 20% of the grid
         // this.showGrid();
+    }
+
+    randomMines(){
+        let r = Math.random();
+        if (r < 0.05) { // Example: 5% chance to place a mine
+            return true;
+        }
+        return false;
     }
 
     showGrid() {
@@ -79,19 +87,19 @@ export class Grid {
         this.cells[x][y] = cell;
     }
 
-    placeMines(count: integer) {
-        // Implementation for placing mines randomly on the grid
-        let placed = 0;
-        while (placed < count) {
-            const x = Math.floor(Math.random() * this.cells.length);
-            const y = Math.floor(Math.random() * this.cells[0].length);
-            const cell = this.getCell(x, y);
-            if (cell && !cell.mine) {
-                cell.mine = true; // Mark the cell as a mine
-                placed++;
-            }
-        }
-    }
+    // placeMines(count: integer) {
+    //     // Implementation for placing mines randomly on the grid
+    //     let placed = 0;
+    //     while (placed < count) {
+    //         const x = Math.floor(Math.random() * this.cells.length);
+    //         const y = Math.floor(Math.random() * this.cells[0].length);
+    //         const cell = this.getCell(x, y);
+    //         if (cell && !cell.mine) {
+    //             cell.mine = true; // Mark the cell as a mine
+    //             placed++;
+    //         }
+    //     }
+    // }
 
     add(scene: Scene){
         this.cells.forEach(column => {
