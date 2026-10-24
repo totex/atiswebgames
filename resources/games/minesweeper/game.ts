@@ -26,10 +26,23 @@ class GameScene extends Scene {
         lines.add(this);
         this.grid.add();
 
+        // Disable the right-click context menu on the game canvas
+        this.input.mouse?.disableContextMenu();
+
         // Mouse events
         this.input.on('pointerdown', (pointer: Pointer) => {
             // console.log(pointer.x, pointer.y);
-            this.grid.click(pointer.x, pointer.y);
+            if (pointer.leftButtonDown()) {
+                let x: number = Math.floor(pointer.x / conf.cell_pixel_width);
+                let y: number = Math.floor(pointer.y / conf.cell_pixel_height);
+                this.grid.click(x, y);
+            }
+
+            if (pointer.rightButtonDown()) {
+                const x: number = Math.floor(pointer.x / conf.cell_pixel_width);
+                const y: number = Math.floor(pointer.y / conf.cell_pixel_height);
+                this.grid.mark_mine(x, y);
+            }
             
         })
 
@@ -48,6 +61,11 @@ const config = {
     // height: window.innerHeight,
     width: conf.canvas_pixel_width,
     height: conf.canvas_pixel_height,
+    input: {
+        mouse: {
+            target: window // or your game canvas
+        }
+    },
     canvas,
     scene: [
         GameScene

@@ -15,6 +15,7 @@ class Cell {
     mine_counter: number = 0;
     private labelObject?: GameObjects.Text;
     private mineCircle?: GameObjects.GameObject;
+    private markedMine?: GameObjects.GameObject;
 
     constructor(mine: boolean, pos: Phaser.Math.Vector2) {
         this.mine = mine;
@@ -50,6 +51,7 @@ class Cell {
     }
 
     updateVisual(scene: Scene): void {
+        // shows the numbers
         if (this.label) {
             if (!this.labelObject) {
                 this.add(scene);
@@ -58,19 +60,41 @@ class Cell {
             }
         }
 
-        if (this.mine && this.show_mine ) {
-            if (!this.mineCircle) {
-                    this.mineCircle = scene.add.circle(
+        // mark the cell as mine (marker is toggable)
+        if (this.marked) {
+            if (!this.markedMine) {
+                    this.markedMine = scene.add.circle(
                     this.pos.x,
                     this.pos.y,
                     6,          // Radius
-                    0xff0000    // Red
-                ); 
+                    0xff00ff    // Red + Blue
+                )
             }
+            
         } else {
-            if (this.mineCircle) {
-                this.mineCircle.destroy();
-                this.mineCircle = undefined;
+            if (this.markedMine) {
+                this.markedMine.destroy();
+                this.markedMine = undefined;
+            }
+        }
+
+        // DEBUGGIG
+        // toggles mine visibilty for debugging
+        if (conf.state == "DEBUG") {
+            if (this.mine && this.show_mine ) {
+                if (!this.mineCircle) {
+                        this.mineCircle = scene.add.circle(
+                        this.pos.x,
+                        this.pos.y,
+                        6,          // Radius
+                        0xff0000    // Red
+                    ); 
+                }
+            } else {
+                if (this.mineCircle) {
+                    this.mineCircle.destroy();
+                    this.mineCircle = undefined;
+                }
             }
         }
     }
@@ -125,13 +149,22 @@ export class Grid {
         });
     }
 
-     show_mines(): void {
+    show_mines(): void {
         this.cells.forEach(row => {
             row.forEach(cell => {
                 cell.show_mine = !cell.show_mine;
                 cell.updateVisual(this.scene);
             });
         });
+    }
+
+    mark_mine(x: number, y: number): void {
+        const cell = this.getCell(x, y);
+        if (!cell) return;
+        cell.marked = !cell.marked;
+        cell.updateVisual(this.scene);
+        // this.cells[y][x].marked = true;
+        // this.cells[y][x].updateVisual(this.scene);
     }
 
     is_within_bounds(x: number, y: number): boolean {
@@ -198,13 +231,11 @@ export class Grid {
     }
 
     click(x: number, y: number): void {
-        let _x: number = Math.floor(x / conf.cell_pixel_width);
-        let _y: number = Math.floor(y / conf.cell_pixel_height);
         // console.log(`Clicked on cell at (${_x}, ${_y})`);
         // if (this.getCell(_x, _y)?.mine) {
         //     console.log("Mine clicked!");
         // }
-        this.search(_x, _y);
+        this.search(x, y);
         this.updateVisuals();
     }
 
