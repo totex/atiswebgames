@@ -37,6 +37,14 @@ class GameSeeder extends Seeder
                 'category' => 'arcade',
                 'status' => 'published',
                 'sort_order' => 3
+            ],
+            [
+                'title' => 'Tetris',
+                'slug' => 'tetris',
+                'description' => 'Train your brain with a Tetris game',
+                'category' => 'arcade',
+                'status' => 'published',
+                'sort_order' => 4
             ]
         ];
 
