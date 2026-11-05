@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Breakout sound effects — generated entirely with the Web Audio API.
  *
@@ -14,25 +12,68 @@
  * the lifetime of the page, including across scene restarts.
  */
 
-class BreakoutSounds {
-  constructor(options = {}) {
-    this.volume = Number.isFinite(options.volume) ? options.volume : 0.4;
-    this.maxVoices = Number.isFinite(options.maxVoices)
-      ? options.maxVoices
-      : 6;
-    this.muted = Boolean(options.muted);
+export interface BreakoutSoundOptions {
+  volume?: number;
+  maxVoices?: number;
+  muted?: boolean;
+}
 
-    this.context = null;
-    this.master = null;
-    this.noiseBuffer = null;
-    this.activeVoices = 0;
-    this.enabled = true;
+/** The subset of a simulation brick that determines its pop sound. */
+export interface SoundBrick {
+  row: number;
+  column: number;
+  x: number;
+}
+
+export interface PopOptions {
+  base: number;
+  endRatio?: number;
+  peak?: number;
+  attack?: number;
+  hold?: number;
+  duration?: number;
+  sweep?: number;
+  pan?: number;
+  wave?: OscillatorType;
+  noiseLevel?: number;
+  noiseCutoff?: number;
+  noiseDuration?: number;
+}
+
+interface WebkitAudioContextWindow {
+  webkitAudioContext?: typeof AudioContext;
+}
+
+export class BreakoutSounds {
+  private readonly volume: number;
+  private readonly maxVoices: number;
+  private muted: boolean;
+
+  private context: AudioContext | null = null;
+  private master: GainNode | null = null;
+  private noiseBuffer: AudioBuffer | null = null;
+  private activeVoices = 0;
+  private enabled = true;
+
+  private readonly handleGesture: () => void;
+
+  constructor(options: BreakoutSoundOptions = {}) {
+    this.volume =
+      typeof options.volume === 'number' && Number.isFinite(options.volume)
+        ? options.volume
+        : 0.4;
+    this.maxVoices =
+      typeof options.maxVoices === 'number' &&
+      Number.isFinite(options.maxVoices)
+        ? options.maxVoices
+        : 6;
+    this.muted = Boolean(options.muted);
 
     this.handleGesture = () => this.unlock();
     this.attachGestureListeners();
   }
 
-  attachGestureListeners() {
+  private attachGestureListeners(): void {
     if (typeof globalThis.addEventListener !== 'function') {
       return;
     }
@@ -44,7 +85,7 @@ class BreakoutSounds {
     globalThis.addEventListener('pointerdown', this.handleGesture, true);
   }
 
-  detachGestureListeners() {
+  private detachGestureListeners(): void {
     if (typeof globalThis.removeEventListener !== 'function') {
       return;
     }
@@ -53,7 +94,7 @@ class BreakoutSounds {
     globalThis.removeEventListener('pointerdown', this.handleGesture, true);
   }
 
-  ensureContext() {
+  private ensureContext(): AudioContext | null {
     if (this.context) {
       return this.context;
     }
@@ -63,7 +104,9 @@ class BreakoutSounds {
     }
 
     const AudioContextClass =
-      globalThis.AudioContext || globalThis.webkitAudioContext;
+      globalThis.AudioContext ??
+      (globalThis as typeof globalThis & WebkitAudioContextWindow)
+        .webkitAudioContext;
 
     if (!AudioContextClass) {
       this.enabled = false;
@@ -88,7 +131,7 @@ class BreakoutSounds {
     }
   }
 
-  createNoiseBuffer(context) {
+  private createNoiseBuffer(context: AudioContext): AudioBuffer | null {
     try {
       const length = Math.max(1, Math.floor(context.sampleRate * 0.024));
       const buffer = context.createBuffer(1, length, context.sampleRate);
@@ -100,64 +143,59 @@ class BreakoutSounds {
       }
 
       return buffer;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
 
-  unlock() {
+  unlock(): void {
     const context = this.ensureContext();
 
     if (!context) {
       return;
     }
 
-    if (context.state === 'suspended' || context.state === 'interrupted') {
-      const resumed = context.resume();
-
-      if (resumed && typeof resumed.catch === 'function') {
-        resumed.catch(() => {
-          // Autoplay policy rejected the resume; a later gesture will retry.
-        });
-      }
+    if (
+      context.state === 'suspended' ||
+      (context.state as string) === 'interrupted'
+    ) {
+      void context.resume().catch(() => {
+        // Autoplay policy rejected the resume; a later gesture will retry.
+      });
     }
   }
 
-  isMuted() {
+  isMuted(): boolean {
     return this.muted;
   }
 
-  toggleMute() {
+  toggleMute(): boolean {
     this.setMuted(!this.muted);
     return this.muted;
   }
 
-  setMuted(muted) {
+  setMuted(muted: boolean): void {
     this.muted = Boolean(muted);
 
-    if (!this.master || !this.context) {
+    const master = this.master;
+    const context = this.context;
+
+    if (!master || !context) {
       return;
     }
 
-    const now = this.context.currentTime;
-    const gain = this.master.gain;
+    const now = context.currentTime;
+    const gain = master.gain;
 
     try {
-      if (typeof gain.cancelScheduledValues === 'function') {
-        gain.cancelScheduledValues(now);
-      }
-
-      if (typeof gain.setTargetAtTime === 'function') {
-        gain.setTargetAtTime(this.muted ? 0 : this.volume, now, 0.015);
-      } else {
-        gain.value = this.muted ? 0 : this.volume;
-      }
-    } catch (error) {
+      gain.cancelScheduledValues(now);
+      gain.setTargetAtTime(this.muted ? 0 : this.volume, now, 0.015);
+    } catch {
       gain.value = this.muted ? 0 : this.volume;
     }
   }
 
-  clamp(value, min, max) {
+  private clamp(value: number, min: number, max: number): number {
     return value < min ? min : value > max ? max : value;
   }
 
@@ -165,10 +203,12 @@ class BreakoutSounds {
    * Play one brick pop. `brick` is the simulation brick that was just
    * destroyed; `fieldWidth` turns its x position into a stereo pan.
    */
-  popBrick(brick = {}, fieldWidth = 1280) {
-    const row = Number.isFinite(brick.row)
-      ? this.clamp(brick.row, 0, 9)
-      : 4;
+  popBrick(brick: SoundBrick, fieldWidth = 1280): void {
+    const row = this.clamp(
+      Number.isFinite(brick.row) ? brick.row : 4,
+      0,
+      9
+    );
     const column = Number.isFinite(brick.column) ? brick.column : 0;
     const width =
       Number.isFinite(fieldWidth) && fieldWidth > 0 ? fieldWidth : 1280;
@@ -201,7 +241,7 @@ class BreakoutSounds {
    * Play the softer paddle thump. `offset` is the clamped -1..1 hit offset
    * from the paddle centre, while `contactX` is where the ball actually hit.
    */
-  popPaddle(offset = 0, contactX, fieldWidth = 1280) {
+  popPaddle(offset = 0, contactX: number, fieldWidth = 1280): void {
     const width =
       Number.isFinite(fieldWidth) && fieldWidth > 0 ? fieldWidth : 1280;
     const x = Number.isFinite(contactX) ? contactX : width / 2;
@@ -233,7 +273,7 @@ class BreakoutSounds {
    * Shared one-shot voice: oscillator -> gain -> pan -> master, plus an
    * optional filtered noise transient mixed into the same output.
    */
-  playPop({
+  private playPop({
     base,
     endRatio = 0.35,
     peak = 0.16,
@@ -246,14 +286,15 @@ class BreakoutSounds {
     noiseLevel = 0.045,
     noiseCutoff = 1400,
     noiseDuration = 0.022,
-  }) {
+  }: PopOptions): void {
     if (!this.enabled || this.muted) {
       return;
     }
 
     const context = this.context;
+    const master = this.master;
 
-    if (!context || context.state !== 'running') {
+    if (!context || !master || context.state !== 'running') {
       return;
     }
 
@@ -289,29 +330,29 @@ class BreakoutSounds {
       Number.isFinite(noiseDuration) ? noiseDuration : 0.022
     );
 
-    let panner = null;
-    let gain = null;
-    let oscillator = null;
-    let noiseSource = null;
-    let noiseFilter = null;
-    let noiseGain = null;
+    const nodes: AudioNode[] = [];
 
     try {
+      let panner: StereoPannerNode | null = null;
+
       if (typeof context.createStereoPanner === 'function') {
         panner = context.createStereoPanner();
         panner.pan.value = pannerValue;
-        panner.connect(this.master);
+        panner.connect(master);
+        nodes.push(panner);
       }
 
-      const output = panner || this.master;
+      const output: AudioNode = panner ?? master;
 
-      gain = context.createGain();
+      const gain = context.createGain();
+      nodes.push(gain);
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(peakGain, now + attackTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + holdTime);
       gain.connect(output);
 
-      oscillator = context.createOscillator();
+      const oscillator = context.createOscillator();
+      nodes.push(oscillator);
       oscillator.type = wave;
       oscillator.frequency.setValueAtTime(startFrequency, now);
       oscillator.frequency.exponentialRampToValueAtTime(
@@ -321,79 +362,63 @@ class BreakoutSounds {
       oscillator.connect(gain);
 
       if (this.noiseBuffer && noiseGainValue > 0) {
-        noiseSource = context.createBufferSource();
+        const noiseSource = context.createBufferSource();
         noiseSource.buffer = this.noiseBuffer;
 
-        noiseFilter = context.createBiquadFilter();
+        const noiseFilter = context.createBiquadFilter();
         noiseFilter.type = 'highpass';
         noiseFilter.frequency.value = Math.max(
           40,
           Number.isFinite(noiseCutoff) ? noiseCutoff : 1400
         );
 
-        noiseGain = context.createGain();
+        const noiseGain = context.createGain();
         noiseGain.gain.setValueAtTime(noiseGainValue, now);
         noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseTime);
 
         noiseSource.connect(noiseFilter);
         noiseFilter.connect(noiseGain);
         noiseGain.connect(output);
+        nodes.push(noiseSource, noiseFilter, noiseGain);
 
         noiseSource.start(now);
         noiseSource.stop(now + noiseTime + 0.002);
       }
 
+      oscillator.onended = () => {
+        this.activeVoices = Math.max(0, this.activeVoices - 1);
+        this.disconnectNodes(nodes);
+      };
+
       oscillator.start(now);
       oscillator.stop(now + stopTime);
       this.activeVoices += 1;
+    } catch {
+      this.disconnectNodes(nodes);
+    }
+  }
 
-      oscillator.onended = () => {
-        this.activeVoices = Math.max(0, this.activeVoices - 1);
-
-        for (const node of [
-          oscillator,
-          gain,
-          noiseSource,
-          noiseFilter,
-          noiseGain,
-          panner,
-        ]) {
-          if (node && typeof node.disconnect === 'function') {
-            try {
-              node.disconnect();
-            } catch (error) {
-              // The browser may already have released the node.
-            }
-          }
-        }
-      };
-    } catch (error) {
-      for (const node of [
-        oscillator,
-        gain,
-        panner,
-        noiseSource,
-        noiseFilter,
-        noiseGain,
-      ]) {
-        if (node && typeof node.disconnect === 'function') {
-          try {
-            node.disconnect();
-          } catch (disconnectError) {
-            // Ignore cleanup failures.
-          }
-        }
+  private disconnectNodes(nodes: readonly AudioNode[]): void {
+    for (const node of nodes) {
+      try {
+        node.disconnect();
+      } catch {
+        // The browser may already have released the node.
       }
     }
   }
 
-  dispose() {
+  dispose(): void {
     this.detachGestureListeners();
 
-    if (this.context && typeof this.context.close === 'function') {
+    const context = this.context;
+
+    if (context) {
       try {
-        this.context.close();
-      } catch (error) {
+        void context.close().catch(() => {
+          // Ignore cleanup failures.
+        });
+      } catch {
         // Ignore cleanup failures.
       }
     }
@@ -403,12 +428,4 @@ class BreakoutSounds {
     this.noiseBuffer = null;
     this.activeVoices = 0;
   }
-}
-
-if (typeof globalThis !== 'undefined') {
-  globalThis.BreakoutSounds = BreakoutSounds;
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { BreakoutSounds };
 }

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Breakout / Arkanoid — a Phaser 4 port of Breakout-Arkanoid/BreakoutGame.py
  *
@@ -21,8 +19,12 @@
  *   M                     mute / unmute the synthesized brick pops
  *
  * Brick pops and paddle thumps are generated with the Web Audio API; see
- * sounds.js.
+ * sounds.ts.
  */
+
+import Phaser, { GameObjects, Scene } from 'phaser';
+import { BreakoutSounds } from './sounds';
+import './styles.css';
 
 /* ------------------------------------------------------------------ */
 /* Tunables                                                           */
@@ -60,19 +62,21 @@ const CONFIG = Object.freeze({
   // Physics runs at a fixed rate, independent of the render rate.
   fixedDt: 1 / 120,
   maxFrameTime: 0.25, // avoid a huge catch-up after a stalled frame
-});
+} as const);
 
 const FIELD = CONFIG.field;
 
-const STATE = Object.freeze({
+const STATE = {
   READY: 'ready',
   PLAYING: 'playing',
   GAME_OVER: 'game-over',
   WON: 'won',
-});
+} as const;
+
+type GameState = (typeof STATE)[keyof typeof STATE];
 
 // One colour per brick row, top to bottom.
-const BRICK_COLORS = Object.freeze([
+const BRICK_COLORS = [
   0xef476f,
   0xf77448,
   0xffa630,
@@ -83,24 +87,24 @@ const BRICK_COLORS = Object.freeze([
   0x4895ef,
   0x8369dd,
   0xd65db1,
-]);
+] as const;
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
 }
 
-function lighten(color, amount = 55) {
+function lighten(color: number, amount = 55): number {
   const r = Math.min(255, ((color >> 16) & 0xff) + amount);
   const g = Math.min(255, ((color >> 8) & 0xff) + amount);
   const b = Math.min(255, (color & 0xff) + amount);
   return (r << 16) | (g << 8) | b;
 }
 
-function formatScore(score) {
+function formatScore(score: number): string {
   return String(score).padStart(6, '0');
 }
 
@@ -108,14 +112,73 @@ function formatScore(score) {
 /* Simulation                                                         */
 /* ------------------------------------------------------------------ */
 
+interface Paddle {
+  x: number;
+  direction: number;
+}
+
+interface Ball {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+}
+
+interface Brick {
+  id: number;
+  row: number;
+  column: number;
+  x: number;
+  y: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  color: number;
+  edgeColor: number;
+  points: number;
+  alive: boolean;
+}
+
+interface CollisionNormal {
+  x: number;
+  y: number;
+  depth: number;
+}
+
+type RandomFn = () => number;
+type PaddleHitHandler = (offset: number, x: number) => void;
+
 /**
  * The whole game simulation, with no Phaser dependency.
  *
  * The scene reads `ball`, `paddle`, `bricks`, `score`, `lives` and `state`
- * after calling `update()`. This keeps the rules testable in plain Node.
+ * after calling `update()`.
  */
-class BreakoutWorld {
-  constructor(random = Math.random, onPaddleHit = null) {
+export class BreakoutWorld {
+  readonly random: RandomFn;
+  readonly onPaddleHit: PaddleHitHandler | null;
+
+  score = 0;
+  lives: number = CONFIG.startingLives;
+  state: GameState = STATE.READY;
+  accumulator = 0;
+  paddle: Paddle = { x: CONFIG.width / 2, direction: 0 };
+  ball: Ball = {
+    x: CONFIG.width / 2,
+    y: CONFIG.ballStartY,
+    vx: 0,
+    vy: 0,
+    radius: CONFIG.ballRadius,
+  };
+  bricks: Brick[] = [];
+  remainingBricks = 0;
+
+  constructor(
+    random: RandomFn = Math.random,
+    onPaddleHit: PaddleHitHandler | null = null
+  ) {
     this.random = random;
     this.onPaddleHit =
       typeof onPaddleHit === 'function' ? onPaddleHit : null;
@@ -123,7 +186,7 @@ class BreakoutWorld {
   }
 
   /** Start a completely new game (score, lives and brick wall). */
-  reset() {
+  reset(): void {
     this.score = 0;
     this.lives = CONFIG.startingLives;
     this.state = STATE.READY;
@@ -143,7 +206,7 @@ class BreakoutWorld {
     this.resetBall();
   }
 
-  buildBricks() {
+  buildBricks(): void {
     this.bricks = [];
     this.remainingBricks = 0;
     let id = 0;
@@ -182,7 +245,7 @@ class BreakoutWorld {
   }
 
   /** Put the ball back on the paddle, ready for another launch. */
-  resetBall() {
+  resetBall(): void {
     this.ball.x = this.paddle.x;
     this.ball.y = CONFIG.ballStartY;
     this.ball.vx = 0;
@@ -190,20 +253,20 @@ class BreakoutWorld {
     this.state = STATE.READY;
   }
 
-  isRunning() {
+  isRunning(): boolean {
     return this.state === STATE.READY || this.state === STATE.PLAYING;
   }
 
-  isFinished() {
+  isFinished(): boolean {
     return this.state === STATE.GAME_OVER || this.state === STATE.WON;
   }
 
-  setPaddleDirection(direction) {
+  setPaddleDirection(direction: number): void {
     this.paddle.direction = clamp(direction, -1, 1);
   }
 
   /** Launch the ball upwards at a random angle between 55 and 125 degrees. */
-  launch() {
+  launch(): boolean {
     if (this.state !== STATE.READY) {
       return false;
     }
@@ -219,7 +282,7 @@ class BreakoutWorld {
    * Advance by `deltaMs`, running as many fixed 120 Hz steps as needed.
    * Returns the number of steps that were simulated.
    */
-  update(deltaMs) {
+  update(deltaMs: number): number {
     if (!this.isRunning()) {
       return 0;
     }
@@ -244,7 +307,7 @@ class BreakoutWorld {
     return steps;
   }
 
-  step(dt) {
+  step(dt: number): void {
     if (!this.isRunning()) {
       return;
     }
@@ -259,7 +322,7 @@ class BreakoutWorld {
     this.moveBall(dt);
   }
 
-  movePaddle(dt) {
+  movePaddle(dt: number): void {
     const half = CONFIG.paddleWidth / 2;
     const minX = FIELD.left + CONFIG.wallRadius + half;
     const maxX = FIELD.right - CONFIG.wallRadius - half;
@@ -271,14 +334,14 @@ class BreakoutWorld {
     );
   }
 
-  holdBall() {
+  holdBall(): void {
     this.ball.x = this.paddle.x;
     this.ball.y = CONFIG.ballStartY;
     this.ball.vx = 0;
     this.ball.vy = 0;
   }
 
-  moveBall(dt) {
+  moveBall(dt: number): void {
     const ball = this.ball;
 
     ball.x += ball.vx * dt;
@@ -294,7 +357,7 @@ class BreakoutWorld {
     }
   }
 
-  collideWalls() {
+  collideWalls(): void {
     const ball = this.ball;
     const radius = ball.radius;
     const minX = FIELD.left + CONFIG.wallRadius + radius;
@@ -315,7 +378,7 @@ class BreakoutWorld {
     }
   }
 
-  collidePaddle() {
+  collidePaddle(): void {
     const ball = this.ball;
 
     // Only a ball that is falling and is still above the paddle centre can
@@ -354,11 +417,11 @@ class BreakoutWorld {
     }
   }
 
-  collideBricks() {
+  collideBricks(): void {
     const ball = this.ball;
     const radius = ball.radius;
     let hitCount = 0;
-    let bestNormal = null;
+    let bestNormal: CollisionNormal | null = null;
 
     for (const brick of this.bricks) {
       if (!brick.alive) {
@@ -385,9 +448,9 @@ class BreakoutWorld {
         continue;
       }
 
-      let nx;
-      let ny;
-      let depth;
+      let nx = 0;
+      let ny = 0;
+      let depth = 0;
 
       if (distanceSq > 1e-8) {
         const distance = Math.sqrt(distanceSq);
@@ -456,7 +519,7 @@ class BreakoutWorld {
     }
   }
 
-  checkBottom() {
+  checkBottom(): void {
     if (
       this.state === STATE.PLAYING &&
       this.ball.y - this.ball.radius > FIELD.bottom
@@ -465,7 +528,7 @@ class BreakoutWorld {
     }
   }
 
-  loseLife() {
+  loseLife(): void {
     this.lives = Math.max(0, this.lives - 1);
 
     if (this.lives === 0) {
@@ -482,7 +545,7 @@ class BreakoutWorld {
    * Keep the ball at the original constant speed and prevent a nearly
    * horizontal trajectory from bouncing between the side walls forever.
    */
-  keepBallMoving() {
+  keepBallMoving(): void {
     const ball = this.ball;
     let speed = Math.hypot(ball.vx, ball.vy);
 
@@ -510,11 +573,6 @@ class BreakoutWorld {
 /* Phaser scene                                                       */
 /* ------------------------------------------------------------------ */
 
-// Allows this file to be required from Node for the logic tests. In the
-// browser Phaser is present and the real Scene base class is used.
-const SceneBase =
-  typeof Phaser !== 'undefined' && Phaser.Scene ? Phaser.Scene : class {};
-
 const FONT_FAMILY = '"Trebuchet MS", "Segoe UI", Arial, sans-serif';
 
 const TEXT_COLOR = '#ebf0ff';
@@ -525,17 +583,51 @@ const GOLD_COLOR = '#ffd666';
 const DANGER_COLOR = '#ff646e';
 const SUB_COLOR = '#bec8e1';
 
-class BreakoutScene extends SceneBase {
+interface BreakoutKeys {
+  left: Phaser.Input.Keyboard.Key;
+  right: Phaser.Input.Keyboard.Key;
+  a: Phaser.Input.Keyboard.Key;
+  d: Phaser.Input.Keyboard.Key;
+  space: Phaser.Input.Keyboard.Key;
+  r: Phaser.Input.Keyboard.Key;
+  esc: Phaser.Input.Keyboard.Key;
+  m: Phaser.Input.Keyboard.Key;
+}
+
+// One audio context per page, reused across scene restarts.
+let sharedSounds: BreakoutSounds | null = null;
+
+export class BreakoutScene extends Scene {
+  private world!: BreakoutWorld;
+  private sounds: BreakoutSounds | null = null;
+  private brickSprites = new Map<number, GameObjects.Rectangle>();
+  private paddle!: GameObjects.Rectangle;
+  private ball!: GameObjects.Arc;
+
+  private scoreText!: GameObjects.Text;
+  private livesText!: GameObjects.Text;
+  private readyText!: GameObjects.Text;
+  private fpsText!: GameObjects.Text;
+  private soundText!: GameObjects.Text;
+  private messageText!: GameObjects.Text;
+  private subText!: GameObjects.Text;
+  private overlay!: GameObjects.Container;
+
+  private keys: BreakoutKeys | null = null;
+  private paused = false;
+  private lastScore = -1;
+  private lastLives = -1;
+  private lastFpsUpdate = 0;
+  private onWindowBlur: (() => void) | null = null;
+
   constructor() {
     super({ key: 'BreakoutScene' });
   }
 
-  create() {
+  create(): void {
     this.sounds = this.createAudio();
     this.world = new BreakoutWorld(Math.random, (offset, x) => {
-      if (this.sounds) {
-        this.sounds.popPaddle(offset, x, CONFIG.width);
-      }
+      this.sounds?.popPaddle(offset, x, CONFIG.width);
     });
     this.brickSprites = new Map();
     this.paused = false;
@@ -553,33 +645,36 @@ class BreakoutScene extends SceneBase {
     this.sync(0);
   }
 
-  createAudio() {
-    if (
-      typeof window === 'undefined' ||
-      !window.BreakoutSounds ||
-      (!window.AudioContext && !window.webkitAudioContext)
-    ) {
+  private createAudio(): BreakoutSounds | null {
+    if (typeof window === 'undefined') {
       return null;
     }
 
-    try {
-      // One context for the whole page, reused across scene restarts.
-      if (!window.breakoutSounds) {
-        window.breakoutSounds = new window.BreakoutSounds();
+    const audioWindow = window as Window & {
+      webkitAudioContext?: typeof AudioContext;
+    };
+
+    if (!window.AudioContext && !audioWindow.webkitAudioContext) {
+      return null;
+    }
+
+    if (!sharedSounds) {
+      try {
+        sharedSounds = new BreakoutSounds();
+      } catch (error) {
+        console.warn('Breakout audio is unavailable:', error);
+        return null;
       }
-
-      return window.breakoutSounds;
-    } catch (error) {
-      console.warn('Breakout audio is unavailable:', error);
-      return null;
     }
+
+    return sharedSounds;
   }
 
   /* ---------------------------------------------------------------- */
   /* Rendering                                                        */
   /* ---------------------------------------------------------------- */
 
-  drawBackdrop() {
+  private drawBackdrop(): void {
     const g = this.add.graphics().setDepth(0);
 
     // Full-window backdrop, then the slightly lighter playfield.
@@ -603,7 +698,9 @@ class BreakoutScene extends SceneBase {
 
     // Walls: a soft wide line under a brighter thin one, for a subtle glow.
     const walls = this.add.graphics().setDepth(1);
-    const segments = [
+    const segments: ReadonlyArray<
+      readonly [number, number, number, number]
+    > = [
       [FIELD.left, FIELD.top, FIELD.left, FIELD.bottom],
       [FIELD.left, FIELD.top, FIELD.right, FIELD.top],
       [FIELD.right, FIELD.top, FIELD.right, FIELD.bottom],
@@ -631,7 +728,7 @@ class BreakoutScene extends SceneBase {
     walls.strokePath();
   }
 
-  drawBricks() {
+  private drawBricks(): void {
     for (const brick of this.world.bricks) {
       const sprite = this.add
         .rectangle(
@@ -648,7 +745,7 @@ class BreakoutScene extends SceneBase {
     }
   }
 
-  createActors() {
+  private createActors(): void {
     this.paddle = this.add
       .rectangle(
         this.world.paddle.x,
@@ -665,7 +762,7 @@ class BreakoutScene extends SceneBase {
       .setDepth(5);
   }
 
-  createHud() {
+  private createHud(): void {
     const controls = this.sounds
       ? 'LEFT / A   RIGHT / D   move        SPACE   launch        R   restart        ESC   pause        M   mute'
       : 'LEFT / A   RIGHT / D   move        SPACE   launch        R   restart        ESC   pause';
@@ -680,7 +777,7 @@ class BreakoutScene extends SceneBase {
       .setOrigin(0, 0.5)
       .setDepth(10);
 
-    this.titleText = this.add
+    this.add
       .text(CONFIG.width / 2, 50, 'BREAKOUT', {
         fontFamily: FONT_FAMILY,
         fontSize: '24px',
@@ -700,17 +797,12 @@ class BreakoutScene extends SceneBase {
       .setOrigin(1, 0.5)
       .setDepth(10);
 
-    this.controlsText = this.add
-      .text(
-        CONFIG.width / 2,
-        876,
-        controls,
-        {
-          fontFamily: FONT_FAMILY,
-          fontSize: '13px',
-          color: MUTED_COLOR,
-        }
-      )
+    this.add
+      .text(CONFIG.width / 2, 876, controls, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '13px',
+        color: MUTED_COLOR,
+      })
       .setOrigin(0.5, 0.5)
       .setDepth(10);
 
@@ -737,7 +829,7 @@ class BreakoutScene extends SceneBase {
       .text(
         FIELD.left,
         878,
-        this.sounds && this.sounds.isMuted() ? 'SOUND OFF' : 'SOUND ON',
+        this.sounds?.isMuted() ? 'SOUND OFF' : 'SOUND ON',
         {
           fontFamily: FONT_FAMILY,
           fontSize: '12px',
@@ -749,7 +841,7 @@ class BreakoutScene extends SceneBase {
       .setVisible(Boolean(this.sounds));
   }
 
-  createOverlay() {
+  private createOverlay(): void {
     const dim = this.add.rectangle(
       (FIELD.left + FIELD.right) / 2,
       (FIELD.top + FIELD.bottom) / 2,
@@ -786,14 +878,16 @@ class BreakoutScene extends SceneBase {
   /* Input                                                            */
   /* ---------------------------------------------------------------- */
 
-  bindInput() {
+  private bindInput(): void {
     this.keys = null;
 
-    if (!this.input.keyboard) {
+    const keyboard = this.input.keyboard;
+
+    if (!keyboard) {
       return;
     }
 
-    this.keys = this.input.keyboard.addKeys({
+    this.keys = keyboard.addKeys({
       left: Phaser.Input.Keyboard.KeyCodes.LEFT,
       right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
       a: Phaser.Input.Keyboard.KeyCodes.A,
@@ -802,23 +896,23 @@ class BreakoutScene extends SceneBase {
       r: Phaser.Input.Keyboard.KeyCodes.R,
       esc: Phaser.Input.Keyboard.KeyCodes.ESC,
       m: Phaser.Input.Keyboard.KeyCodes.M,
-    });
+    }) as BreakoutKeys;
 
     // Don't leave the paddle moving if the window loses focus mid-press.
     this.onWindowBlur = () => {
       this.world.setPaddleDirection(0);
-      if (this.input && this.input.keyboard && this.input.keyboard.resetKeys) {
-        this.input.keyboard.resetKeys();
-      }
+      this.input.keyboard?.resetKeys();
     };
     window.addEventListener('blur', this.onWindowBlur);
 
     this.events.once('shutdown', () => {
-      window.removeEventListener('blur', this.onWindowBlur);
+      if (this.onWindowBlur) {
+        window.removeEventListener('blur', this.onWindowBlur);
+      }
     });
   }
 
-  update(time, delta) {
+  update(time: number, delta: number): void {
     if (!this.keys) {
       this.sync(time);
       return;
@@ -879,16 +973,14 @@ class BreakoutScene extends SceneBase {
   /* View sync                                                        */
   /* ---------------------------------------------------------------- */
 
-  sync(time) {
+  private sync(time: number): void {
     const world = this.world;
 
     this.paddle.setPosition(world.paddle.x, CONFIG.paddleY);
 
     const ballVisible =
       world.state === STATE.READY || world.state === STATE.PLAYING;
-    this.ball
-      .setPosition(world.ball.x, world.ball.y)
-      .setVisible(ballVisible);
+    this.ball.setPosition(world.ball.x, world.ball.y).setVisible(ballVisible);
 
     for (const brick of world.bricks) {
       if (!brick.alive) {
@@ -896,9 +988,7 @@ class BreakoutScene extends SceneBase {
         if (sprite && sprite.visible) {
           sprite.setVisible(false);
 
-          if (this.sounds) {
-            this.sounds.popBrick(brick, CONFIG.width);
-          }
+          this.sounds?.popBrick(brick, CONFIG.width);
         }
       }
     }
@@ -931,7 +1021,7 @@ class BreakoutScene extends SceneBase {
       }
     }
 
-    if (time !== undefined && time - this.lastFpsUpdate >= 250) {
+    if (time - this.lastFpsUpdate >= 250) {
       this.lastFpsUpdate = time;
       const fps = Math.round(this.game.loop.actualFps || 0);
       this.fpsText.setText(`${fps} FPS`);
@@ -943,51 +1033,31 @@ class BreakoutScene extends SceneBase {
 /* Boot                                                               */
 /* ------------------------------------------------------------------ */
 
-function bootGame() {
-  const shell = document.getElementById('game-shell');
+const canvas = document.getElementById('gameCanvas');
 
-  if (!shell) {
-    return;
-  }
-
-  if (typeof Phaser === 'undefined') {
-    shell.innerHTML =
-      '<p class="load-error">Could not load Phaser. Check your connection and reload the page.</p>';
-    return;
-  }
-
-  window.breakoutGame = new Phaser.Game({
-    type: Phaser.AUTO,
-    width: CONFIG.width,
-    height: CONFIG.height,
-    parent: 'game-shell',
-    backgroundColor: '#070912',
-    scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-    },
-    render: {
-      antialias: true,
-    },
-    scene: [BreakoutScene],
-  });
+if (!(canvas instanceof HTMLCanvasElement)) {
+  throw new Error('Breakout: the #gameCanvas element is missing.');
 }
 
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  if (document.readyState === 'complete') {
-    bootGame();
-  } else {
-    window.addEventListener('load', bootGame, { once: true });
-  }
-}
+const config: Phaser.Types.Core.GameConfig = {
+  // Phaser requires an explicit renderer when the canvas is supplied by the
+  // page. WEBGL matches the other games in this project.
+  type: Phaser.WEBGL,
+  width: CONFIG.width,
+  height: CONFIG.height,
+  canvas,
+  backgroundColor: '#070912',
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  render: {
+    antialias: true,
+  },
+  scene: [BreakoutScene],
+};
 
-// Exported only when this file is loaded by Node for the logic tests.
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    BreakoutWorld,
-    BreakoutScene,
-    CONFIG,
-    STATE,
-    BRICK_COLORS,
-  };
-}
+new Phaser.Game(config);
+
+export { CONFIG, STATE, BRICK_COLORS };
+export type { Brick, Ball, Paddle, GameState };
