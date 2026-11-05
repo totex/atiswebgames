@@ -3,8 +3,8 @@ import conf from './config'
 
 
 export class Lines {
-    private width: integer = conf.grid_pixel_width;
-    private height: integer = conf.grid_pixel_height;
+    private width: number = conf.grid_pixel_width;
+    private height: number = conf.grid_pixel_height;
 
     private readonly cell_pixel_width: number;
     private readonly cell_pixel_height: number;

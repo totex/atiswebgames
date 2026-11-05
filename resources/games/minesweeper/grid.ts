@@ -272,7 +272,7 @@ export class Grid {
 
 /* Not used:
 
-placeMines(count: integer) {
+placeMines(count: number) {
     // Implementation for placing mines randomly on the grid
     let placed = 0;
     while (placed < count) {

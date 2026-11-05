@@ -2,11 +2,11 @@ import {GameObjects, Scene} from "phaser";
 import conf from "./config";
 
 class Cell {
-    x: integer;
-    y: integer;
-    width: integer;
-    height: integer;
-    value: integer;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    value: number;
 
     private textbox: GameObjects.Text | undefined;
 
@@ -58,8 +58,8 @@ class Cell {
 
 export class Grid {
 
-    width: integer;
-    height: integer;
+    width: number;
+    height: number;
     cells: Cell[][] = [];
     grid: number[][] = [];
     win: boolean = false;
@@ -71,7 +71,7 @@ export class Grid {
 
     private difficulty: number = 5;  // 7 is ideal, or lower it to make the game harder
 
-    constructor(width: integer, height: integer) {
+    constructor(width: number, height: number) {
         this.width = width;
         this.height = height;
         this.grid = this.create_grid();
@@ -87,7 +87,7 @@ export class Grid {
         this.remove_numbers(this.cells);
         this.win = false;
     }
-    pattern(row_num: integer, col_num: integer): integer {
+    pattern(row_num: number, col_num: number): number {
         return (this.SUB_GRID_SIZE * (row_num % this.SUB_GRID_SIZE) +
             Math.floor(row_num / this.SUB_GRID_SIZE) + col_num) % this.GRID_SIZE;
     }
