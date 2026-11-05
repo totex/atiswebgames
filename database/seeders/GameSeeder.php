@@ -29,6 +29,14 @@ class GameSeeder extends Seeder
                 'category' => 'logical',
                 'status' => 'published',
                 'sort_order' => 2
+            ],
+            [
+                'title' => 'Breakout',
+                'slug' => 'breakout',
+                'description' => 'Train your reflexes with a Breakout game',
+                'category' => 'arcade',
+                'status' => 'published',
+                'sort_order' => 3
             ]
         ];
 

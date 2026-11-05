@@ -1,0 +1,1 @@
+console.log('Breakout game loaded');
